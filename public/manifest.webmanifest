@@ -1,0 +1,18 @@
+{
+  "name": "TokensFlow",
+  "short_name": "TokensFlow",
+  "description": "Open-source live token quota monitor.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#061626",
+  "theme_color": "#0b6dff",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
