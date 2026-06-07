@@ -1,10 +1,9 @@
 {
-  "name": "aleksip",
+  "name": "tokensflow",
   "version": "0.1.0",
   "description": "A tiny open-source local dashboard for the latest observed Codex quota snapshot.",
   "type": "module",
   "bin": {
-    "aleksip": "bin/tokensflow.mjs",
     "tokensflow": "bin/tokensflow.mjs"
   },
   "files": [
