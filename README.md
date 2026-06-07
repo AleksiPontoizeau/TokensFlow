@@ -17,7 +17,7 @@ TokensFlow should be treated as a lightweight local monitor, not as an official 
 Published package workflow:
 
 ```bash
-npx aleksip
+npx tokensflow
 ```
 
 The CLI asks which provider you want to watch:
@@ -29,9 +29,9 @@ The CLI asks which provider you want to watch:
 Scriptable examples:
 
 ```bash
-npx aleksip --tool codex
-npx aleksip --tool claude
-npx aleksip --tool cursor
+npx tokensflow --tool codex
+npx tokensflow --tool claude
+npx tokensflow --tool cursor
 ```
 
 You can still pass a project path if you want, but it is optional. Without a path, TokensFlow uses the current terminal folder.
@@ -149,8 +149,8 @@ Codex is automatic today because Codex stores local session logs and local threa
 Claude Code and Cursor can be selected from the CLI now. If TokensFlow cannot find a local machine-readable quota source, it shows a clear `not connected` state and still supports a JSON usage file via:
 
 ```bash
-TOKENSFLOW_CLAUDE_USAGE_FILE=~/.tokensflow/claude-usage.json npx aleksip --tool claude
-TOKENSFLOW_CURSOR_USAGE_FILE=~/.tokensflow/cursor-usage.json npx aleksip --tool cursor
+TOKENSFLOW_CLAUDE_USAGE_FILE=~/.tokensflow/claude-usage.json npx tokensflow --tool claude
+TOKENSFLOW_CURSOR_USAGE_FILE=~/.tokensflow/cursor-usage.json npx tokensflow --tool cursor
 ```
 
 ## Update Live Data
