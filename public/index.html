@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TokensFlow</title>
+    <meta name="description" content="A local open-source dashboard for the latest observed Codex quota snapshot." />
+    <meta name="theme-color" content="#061626" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="shell" aria-label="TokensFlow token dashboard">
+      <section class="window" aria-live="polite">
+        <header class="topbar">
+          <div class="dots" aria-hidden="true">
+            <span class="dot dot-red"></span>
+            <span class="dot dot-yellow"></span>
+            <span class="dot dot-green"></span>
+          </div>
+          <p class="window-title">tokensflow -- local snapshot</p>
+          <p class="source" id="sourceLabel">booting</p>
+        </header>
+
+        <div class="screen">
+          <div class="scanline" aria-hidden="true"></div>
+          <div class="headline">
+            <p class="kicker">local Codex quota snapshot</p>
+            <h1>TOKENS FLOW</h1>
+          </div>
+
+          <div class="hero-grid">
+            <section class="score" aria-labelledby="remainingLabel">
+              <p class="eyebrow" id="remainingLabel">latest observed quota</p>
+              <div class="score-line">
+                <span class="score-value" id="remainingPercent">--</span>
+                <span class="score-unit">%</span>
+              </div>
+              <p class="score-caption">
+                <span id="remainingTokens">--</span> <span id="scoreCaptionSuffix">left of</span> <span id="budgetTokens">--</span>
+              </p>
+            </section>
+
+            <aside class="signal" aria-label="Local quota snapshot signal">
+              <pre class="wave" aria-hidden="true">
+   ╭╮      ╭╮
+╭──╯╰─╮  ╭─╯╰──╮
+│ token│──│flow │
+╰─╮╭──╯  ╰──╮╭─╯
+  ╰╯ local ╰╯
+              </pre>
+              <div class="swatches" aria-hidden="true">
+                <span class="swatch swatch-pink"></span>
+                <span class="swatch swatch-orange"></span>
+                <span class="swatch swatch-green"></span>
+                <span class="swatch swatch-yellow"></span>
+                <span class="swatch swatch-blue"></span>
+                <span class="swatch swatch-violet"></span>
+              </div>
+            </aside>
+          </div>
+
+          <p class="identity">
+            <span id="statusLabel">waiting</span> · refreshes <span id="refreshRate">every 2s</span><span id="resetLabel" hidden></span>
+          </p>
+
+          <div class="meter" aria-label="Latest observed Codex quota meter">
+            <span id="meterFill"></span>
+          </div>
+
+          <div class="stats-grid">
+            <section class="panel">
+              <h2>Local Meter</h2>
+              <p><strong id="usedTokens">--</strong> parsed local tokens</p>
+              <p><strong id="costLabel">from</strong> <span id="costSuffix">Codex session logs</span></p>
+            </section>
+
+            <section class="panel">
+              <h2>5h Quota</h2>
+              <p><strong id="quotaResetIn">--</strong> to reset</p>
+              <p><strong id="quotaResetLabel">--</strong> reset</p>
+            </section>
+
+            <section class="panel">
+              <h2>Weekly Quota</h2>
+              <p><strong id="weeklyRemaining">--</strong> <span id="weeklyRemainingSuffix">left</span></p>
+              <p><strong id="weeklyPercent">--</strong> <span id="weeklyPercentSuffix">remaining</span></p>
+            </section>
+
+            <section class="panel">
+              <h2>Freshness</h2>
+              <p><strong id="burnRate">Last observed:</strong> <span id="burnRateSuffix">--</span></p>
+              <p><strong id="hoursLeft">Status:</strong> <span id="hoursLeftSuffix">waiting</span></p>
+            </section>
+          </div>
+
+          <section class="rhythm" aria-labelledby="rhythmTitle">
+            <div>
+              <h2 id="rhythmTitle">Last 24h Codex Activity</h2>
+              <p class="section-subtitle">from local Codex session logs</p>
+              <div class="bars" id="historyBars" aria-label="Usage history"></div>
+              <div class="axis" id="historyAxis" aria-hidden="true"></div>
+              <p class="activity-meta" id="activityMeta">waiting for activity metadata</p>
+            </div>
+            <div class="split">
+              <p><span>input</span><strong id="inputTokens">--</strong></p>
+              <p><span>output</span><strong id="outputTokens">--</strong></p>
+              <p><span>sessions</span><strong id="sessionsLabel">--</strong></p>
+              <p><span>active hrs</span><strong id="agentsLabel">--</strong></p>
+            </div>
+          </section>
+
+          <details class="debug-details">
+            <summary>Details</summary>
+            <pre id="debugPanel">waiting for debug metadata</pre>
+          </details>
+
+          <footer class="footer">
+            <span>installable app</span>
+            <span>local only</span>
+            <span id="updatedAt">not official OpenAI</span>
+          </footer>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

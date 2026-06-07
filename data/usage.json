@@ -1,0 +1,26 @@
+{
+  "source": "demo-json",
+  "budgetTokens": 1000000,
+  "usedTokens": 318400,
+  "inputTokens": 217900,
+  "outputTokens": 100500,
+  "retailCostUsd": 42.18,
+  "burnRatePerHour": 14800,
+  "quotaResetAt": "2026-06-07T20:00:00+02:00",
+  "weeklyBudgetTokens": 5000000,
+  "weeklyUsedTokens": 1120000,
+  "weeklyResetAt": "2026-06-08T00:00:00+02:00",
+  "sessions": 9,
+  "agentsAverage": 2.2,
+  "resetAt": "2026-06-07T00:00:00+02:00",
+  "history": [
+    { "label": "00", "usedTokens": 16000 },
+    { "label": "03", "usedTokens": 9000 },
+    { "label": "06", "usedTokens": 46000 },
+    { "label": "09", "usedTokens": 32000 },
+    { "label": "12", "usedTokens": 72000 },
+    { "label": "15", "usedTokens": 51000 },
+    { "label": "18", "usedTokens": 90000 },
+    { "label": "21", "usedTokens": 66400 }
+  ]
+}
