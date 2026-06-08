@@ -4,8 +4,7 @@ import path from "node:path";
 import readline from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 
-const port = Number(process.env.PORT || 3000);
-const url = `http://127.0.0.1:${port}`;
+const requestedPort = Number(process.env.PORT || 3000);
 const args = parseArgs(process.argv.slice(2));
 const cwd = path.resolve(args.cwd || process.cwd());
 const tool = args.tool || process.env.TOKENSFLOW_TOOL || await chooseTool();
@@ -14,11 +13,22 @@ process.env.TOKENSFLOW_TOOL = tool;
 process.env.TOKENSFLOW_SOURCE = tool;
 process.env.TOKENSFLOW_CWD = cwd;
 
-const { startServer } = await import("../server.mjs");
-const server = startServer({ port });
+const { startServerOnAvailablePort } = await import("../server.mjs");
+const serverHandle = await startServerOnAvailablePort({
+  port: requestedPort,
+  allowPortFallback: !process.env.PORT,
+  log: false
+});
+const { server, port } = serverHandle;
+const url = `http://127.0.0.1:${port}`;
 
 console.log(`Provider: ${toolLabel(tool)}`);
 console.log(`Project: ${cwd}`);
+if (port !== requestedPort) {
+  console.log(`Port ${requestedPort} was busy; using ${port}.`);
+}
+console.log(`TokensFlow running at ${url}`);
+console.log(`Snapshots: ${serverHandle.snapshotFile} every ${Math.round(serverHandle.snapshotIntervalMs / 60_000)}m`);
 
 if (process.env.TOKENSFLOW_OPEN !== "0" && !args.noOpen) {
   openUrl(url);

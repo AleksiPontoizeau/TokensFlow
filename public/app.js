@@ -28,6 +28,12 @@ const elements = {
   resetLabel: document.querySelector("#resetLabel"),
   scoreCaptionSuffix: document.querySelector("#scoreCaptionSuffix"),
   sessionsLabel: document.querySelector("#sessionsLabel"),
+  snapshotAxis: document.querySelector("#snapshotAxis"),
+  snapshotBars: document.querySelector("#snapshotBars"),
+  snapshotEmpty: document.querySelector("#snapshotEmpty"),
+  snapshotMeta: document.querySelector("#snapshotMeta"),
+  snapshotQuotaLatest: document.querySelector("#snapshotQuotaLatest"),
+  snapshotWeeklyLatest: document.querySelector("#snapshotWeeklyLatest"),
   sourceLabel: document.querySelector("#sourceLabel"),
   statusLabel: document.querySelector("#statusLabel"),
   updatedAt: document.querySelector("#updatedAt"),
@@ -39,6 +45,8 @@ const elements = {
 };
 
 elements.refreshRate.textContent = `every ${refreshMs / 1000}s`;
+let lastUsage = null;
+let lastSnapshotHistory = null;
 
 async function fetchUsage() {
   const response = await fetch("/api/usage", {
@@ -47,6 +55,18 @@ async function fetchUsage() {
 
   if (!response.ok) {
     throw new Error(`Usage endpoint returned ${response.status}.`);
+  }
+
+  return response.json();
+}
+
+async function fetchSnapshotHistory() {
+  const response = await fetch("/api/snapshots", {
+    cache: "no-store"
+  });
+
+  if (!response.ok) {
+    throw new Error(`Snapshots endpoint returned ${response.status}.`);
   }
 
   return response.json();
@@ -211,6 +231,71 @@ function renderDebugPanel(usage, freshness) {
     `hourly buckets: ${hourlyBuckets}`,
     `burn rate skipped reason: ${debug.burnRateSkippedReason || "--"}`
   ].join("\n");
+  appendSnapshotDebug(lastSnapshotHistory);
+}
+
+function renderSnapshotHistory(history) {
+  const buckets = Array.isArray(history.hourlyBuckets24h) ? history.hourlyBuckets24h : [];
+  const summary = history.summary || {};
+  const hasSnapshots = history.status === "ready" && buckets.some((bucket) => bucket.count > 0);
+
+  elements.snapshotBars.innerHTML = "";
+  elements.snapshotAxis.innerHTML = "";
+  elements.snapshotEmpty.hidden = hasSnapshots;
+  elements.snapshotEmpty.textContent = history.message || "No local snapshots yet. Keep TokensFlow running and this timeline will fill itself.";
+  elements.snapshotMeta.textContent = snapshotMetaLabel(history);
+  elements.snapshotQuotaLatest.textContent = percentLabel(summary.quotaLatest);
+  elements.snapshotWeeklyLatest.textContent = percentLabel(summary.weeklyLatest);
+  appendSnapshotDebug(history);
+
+  const renderBuckets = buckets.length > 0 ? buckets : emptySnapshotBuckets();
+  renderBuckets.forEach((bucket) => {
+    const column = document.createElement("span");
+    column.className = "snapshot-column";
+    column.title = [
+      `hour: ${bucket.label}:00`,
+      `5h quota: ${percentLabel(bucket.quotaRemainingPercent)}`,
+      `weekly quota: ${percentLabel(bucket.weeklyRemainingPercent)}`,
+      `snapshots: ${bucket.count || 0}`
+    ].join("\n");
+
+    const quota = document.createElement("span");
+    quota.className = "snapshot-quota";
+    quota.style.height = `${barHeight(bucket.quotaRemainingPercent)}%`;
+
+    const weekly = document.createElement("span");
+    weekly.className = "snapshot-weekly";
+    weekly.style.height = `${barHeight(bucket.weeklyRemainingPercent)}%`;
+
+    column.append(quota, weekly);
+    elements.snapshotBars.append(column);
+  });
+
+  renderBuckets
+    .filter((_, index) => index % 4 === 0)
+    .forEach((bucket) => {
+      const label = document.createElement("span");
+      label.textContent = bucket.label;
+      elements.snapshotAxis.append(label);
+    });
+}
+
+function renderSnapshotError(error) {
+  if (lastSnapshotHistory) {
+    renderSnapshotHistory({
+      ...lastSnapshotHistory,
+      message: `Snapshot API error. Showing last loaded history.`
+    });
+    return;
+  }
+
+  renderSnapshotHistory({
+    status: "error",
+    message: error?.message || "Snapshot API error.",
+    hourlyBuckets24h: emptySnapshotBuckets(),
+    summary: {},
+    debug: {}
+  });
 }
 
 function formatReset(value) {
@@ -331,40 +416,51 @@ function getFreshnessState(usage) {
   };
 }
 
-function fallbackUsage() {
-  const now = Date.now();
-  const budgetTokens = 1_000_000;
-  const drift = Math.floor((Math.sin(now / 12_000) + 1) * 4200);
-  const usedTokens = 318_400 + drift;
-
+function offlineUsage(error) {
   return {
-    source: "demo-fallback",
-    budgetTokens,
-    usedTokens,
-    inputTokens: Math.round(usedTokens * 0.68),
-    outputTokens: Math.round(usedTokens * 0.32),
-    retailCostUsd: 42.18,
-    burnRatePerHour: 14_800 + Math.round(drift / 4),
-    quotaResetAt: new Date(now + 5 * 60 * 60 * 1000).toISOString(),
-    weeklyBudgetTokens: 5_000_000,
-    weeklyUsedTokens: 1_120_000 + drift,
-    weeklyResetAt: new Date(now + 2 * 24 * 60 * 60 * 1000).toISOString(),
-    sessions: 9,
-    agentsAverage: 2.2,
-    resetAt: new Date(now + 8 * 60 * 60 * 1000).toISOString(),
-    history: ["00", "03", "06", "09", "12", "15", "18", "21"].map((label, index) => ({
-      label,
-      usedTokens: 16_000 + Math.round(Math.abs(Math.sin(now / 7000 + index)) * 80_000)
-    }))
+    source: "codex unavailable",
+    quotaMode: "quota-unavailable",
+    budgetTokens: 100,
+    usedTokens: 0,
+    inputTokens: 0,
+    outputTokens: 0,
+    retailCostUsd: 0,
+    burnRatePerHour: 0,
+    sessions: 0,
+    agentsAverage: 0,
+    history: [],
+    debug: {
+      burnRateSkippedReason: error?.message || "Usage API is unavailable."
+    }
   };
 }
 
 async function tick() {
   try {
-    renderUsage(await fetchUsage());
+    const usage = await fetchUsage();
+    lastUsage = usage;
+    renderUsage(usage);
   } catch (error) {
     console.warn(error);
-    renderUsage(fallbackUsage());
+    if (lastUsage) {
+      renderUsage({
+        ...lastUsage,
+        source: `${lastUsage.source || "local"} · api error`
+      });
+      elements.statusLabel.textContent = "offline snapshot";
+      elements.statusLabel.className = "status-offline";
+    } else {
+      renderUsage(offlineUsage(error));
+    }
+  }
+
+  try {
+    const snapshotHistory = await fetchSnapshotHistory();
+    lastSnapshotHistory = snapshotHistory;
+    renderSnapshotHistory(snapshotHistory);
+  } catch (error) {
+    console.warn(error);
+    renderSnapshotError(error);
   }
 }
 
@@ -385,4 +481,58 @@ if ("caches" in window) {
     .catch((error) => {
       console.warn(error);
     });
+}
+
+function snapshotMetaLabel(history) {
+  if (history.status === "ready") {
+    return `${history.summary?.count || 0} snapshots · last 24h`;
+  }
+
+  if (history.status === "error") {
+    return "snapshot file unavailable";
+  }
+
+  return "no snapshots yet";
+}
+
+function percentLabel(value) {
+  return Number.isFinite(Number(value)) ? `${Math.round(Number(value))}%` : "--";
+}
+
+function barHeight(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) {
+    return 2;
+  }
+
+  return Math.max(Math.min(number, 100), 2);
+}
+
+function emptySnapshotBuckets() {
+  return Array.from({ length: 24 }, (_, index) => ({
+    label: String(index).padStart(2, "0"),
+    quotaRemainingPercent: null,
+    weeklyRemainingPercent: null,
+    count: 0
+  }));
+}
+
+function appendSnapshotDebug(history) {
+  if (!history) {
+    return;
+  }
+
+  const debug = history.debug || {};
+  const lines = [
+    "",
+    "snapshot history:",
+    `status: ${history.status || "--"}`,
+    `message: ${history.message || "--"}`,
+    `file: ${debug.filePath || "--"}`,
+    `parsed snapshots: ${debug.parsedSnapshots ?? 0}`,
+    `malformed lines: ${debug.malformedLines ?? 0}`,
+    `old lines: ${debug.oldLines ?? 0}`
+  ];
+  const base = elements.debugPanel.textContent.split("\n\nsnapshot history:")[0];
+  elements.debugPanel.textContent = `${base}${lines.join("\n")}`;
 }

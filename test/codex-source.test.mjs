@@ -4,6 +4,7 @@ import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { buildCodexActivity24h, readCodexUsage } from "../lib/codex-source.js";
+import { createUsageSource } from "../lib/usage-source.js";
 
 describe("buildCodexActivity24h", () => {
   it("buckets Codex activity at 03:00 and 15:00 Europe/Paris", async () => {
@@ -64,6 +65,27 @@ describe("readCodexUsage", () => {
     assert.equal(usage.weeklyRemainingPercent, 65);
     assert.equal(usage.localTotalTokens, 123456);
     assert.match(usage.debug.latestRateLimitFile, /rollout-rate-limit\.jsonl$/);
+  });
+});
+
+describe("createUsageSource", () => {
+  it("does not return demo fallback for explicit Codex mode", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "tokensflow-explicit-codex-"));
+    const usageSource = createUsageSource({
+      source: "codex",
+      codex: {
+        cwd: root,
+        stateDb: path.join(root, "missing-state.sqlite"),
+        goalsDb: path.join(root, "missing-goals.sqlite"),
+        sessionsRoot: path.join(root, "missing-sessions")
+      }
+    });
+
+    const usage = await usageSource.read();
+
+    assert.equal(usage.quotaMode, "quota-unavailable");
+    assert.notEqual(usage.source, "demo-fallback");
+    assert.match(usage.source, /codex-local/);
   });
 });
 

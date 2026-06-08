@@ -159,7 +159,8 @@ h1 {
 
 .eyebrow,
 .panel h2,
-.rhythm h2 {
+.rhythm h2,
+.timeline h2 {
   margin: 0;
   color: var(--cyan);
   font-size: 18px;
@@ -196,6 +197,9 @@ h1 {
 .split p,
 .section-subtitle,
 .activity-meta,
+.timeline-meta,
+.timeline-empty,
+.timeline-legend,
 .debug-details {
   color: var(--muted);
   font-size: 16px;
@@ -327,10 +331,113 @@ h1 {
 }
 
 .panel strong,
-.split strong {
+.split strong,
+.timeline-legend strong {
   color: var(--text);
   font-size: 24px;
   font-weight: 500;
+}
+
+.timeline {
+  position: relative;
+  margin-top: 14px;
+  padding: 18px;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(110, 231, 255, 0.035), rgba(109, 92, 255, 0.025)),
+    rgba(47, 128, 255, 0.018);
+}
+
+.timeline-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.timeline-meta {
+  margin: 0;
+  font-size: 13px;
+  text-align: right;
+}
+
+.timeline-chart {
+  margin-top: 16px;
+}
+
+.snapshot-bars {
+  display: grid;
+  grid-template-columns: repeat(24, minmax(5px, 1fr));
+  align-items: end;
+  gap: 5px;
+  height: 84px;
+  padding-top: 6px;
+}
+
+.snapshot-column {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: end;
+  gap: 2px;
+  height: 100%;
+}
+
+.snapshot-column span {
+  display: block;
+  min-height: 2px;
+  border-radius: 2px 2px 0 0;
+}
+
+.snapshot-quota {
+  background: linear-gradient(180deg, var(--cyan), var(--blue));
+}
+
+.snapshot-weekly {
+  background: linear-gradient(180deg, var(--violet), var(--indigo));
+  opacity: 0.85;
+}
+
+.snapshot-axis {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 6px;
+  color: #707889;
+  font-size: 13px;
+}
+
+.timeline-empty {
+  margin: 14px 0 0;
+  padding: 12px;
+  border: 1px dashed var(--line-soft);
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.timeline-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  margin-top: 14px;
+  font-size: 13px;
+}
+
+.legend-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 6px;
+  border-radius: 999px;
+}
+
+.quota-dot {
+  background: var(--cyan);
+}
+
+.weekly-dot {
+  background: var(--violet);
 }
 
 .rhythm {
@@ -461,8 +568,21 @@ h1 {
 
   .hero-grid,
   .stats-grid,
-  .rhythm {
+  .rhythm,
+  .timeline-head {
     grid-template-columns: 1fr;
+  }
+
+  .timeline-head {
+    display: grid;
+  }
+
+  .timeline-meta {
+    text-align: left;
+  }
+
+  .snapshot-bars {
+    gap: 3px;
   }
 
   .score-line {

@@ -1,8 +1,8 @@
 # TokensFlow
 
-A tiny open-source local app for watching the latest observed Codex quota snapshot, reset time, and local session token meter.
+A tiny open-source local companion for watching the latest observed Codex quota snapshot, reset time, local session activity, and local snapshot history.
 
-TokensFlow is intentionally small: plain HTML, CSS, browser JavaScript, and a Node server with no runtime dependencies. The default source is `auto`: it reads local Codex session data when available, then falls back to `data/usage.json`. The app polls `/api/usage` every two seconds.
+TokensFlow is intentionally small: plain HTML, CSS, browser JavaScript, and a Node server with no runtime dependencies. The main experience is Codex-first: it reads local Codex session data, shows the latest observed quota snapshot, and records local snapshots every 5 minutes so you can see quota movement over time.
 
 ## Important Disclaimer
 
@@ -36,6 +36,8 @@ npx tokensflow --tool cursor
 
 You can still pass a project path if you want, but it is optional. Without a path, TokensFlow uses the current terminal folder.
 
+If port `3000` is busy and you did not set `PORT`, TokensFlow automatically tries `3001` through `3010` and prints the URL it selected.
+
 Local development:
 
 ```bash
@@ -62,6 +64,8 @@ Snapshots are written as JSONL:
 
 This records what Codex has already written locally. It does not force Codex to create a new `rate_limits` event.
 
+The UI reads those snapshots from `/api/snapshots` and renders a local quota timeline for the last 24 hours. If the snapshot file does not exist yet, the timeline shows an empty state instead of failing.
+
 Useful controls:
 
 ```bash
@@ -79,6 +83,8 @@ By default, TokensFlow reads:
 - `~/.codex/goals_1.sqlite` for optional local goal metadata
 
 The Codex quota cards only use Codex `rate_limits`. The local token meter is displayed separately as a local session meter and is never used to calculate Codex quota percentage.
+
+When Codex is selected explicitly, TokensFlow does not hide failures behind demo data. If Codex logs or rate limits are unavailable, the app shows an offline or unavailable state.
 
 ## Last 24h Codex Activity
 
@@ -142,6 +148,29 @@ Freshness states:
 
 Best use: a beautiful, lightweight local monitor that makes quota snapshots easier to see without opening settings.
 
+## Why Not Exact?
+
+Codex may show fresher quota state in its own UI than it has written to local session logs. TokensFlow can only read local files that already exist. That is why the app says `latest observed` and shows freshness instead of claiming official real-time accuracy.
+
+Snapshots improve the product experience by preserving what TokensFlow has observed over time, but they still depend on the latest local Codex event.
+
+## Local API
+
+TokensFlow exposes local-only endpoints on `127.0.0.1`:
+
+- `GET /api/usage` returns the latest observed usage snapshot.
+- `GET /api/snapshots` returns the configured local snapshot history.
+- `POST /api/usage` updates the JSON fallback source for demos or custom local data.
+
+`/api/snapshots` never accepts a file path from the browser. It only reads the snapshot file configured on the server.
+
+## Privacy And Security
+
+TokensFlow is local-only and has no telemetry.
+
+- See [PRIVACY.md](./PRIVACY.md) for files read, files written, and network behavior.
+- See [SECURITY.md](./SECURITY.md) for the security model and reporting guidance.
+
 ## Provider Status
 
 Codex is automatic today because Codex stores local session logs and local thread token usage on disk.
@@ -196,9 +225,10 @@ npm run check
 
 ## Roadmap
 
-- Add adapters for Claude, OpenAI API billing, and local usage logs.
-- Add a tray or always-on-top desktop wrapper.
-- Add import/export presets for community dashboards.
+- Improve the local quota timeline and snapshot history.
+- Polish `npx tokensflow` launch behavior and first-run states.
+- Add a desktop tray wrapper after the local web companion is trustworthy.
+- Add deeper Claude Code and Cursor adapters only when their local data sources are reliable enough to label honestly.
 
 ## License
 
