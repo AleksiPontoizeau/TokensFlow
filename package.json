@@ -1,6 +1,6 @@
 {
   "name": "tokensflow",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "A tiny open-source local dashboard for the latest observed Codex quota snapshot.",
   "type": "module",
   "bin": {
@@ -13,13 +13,15 @@
     "public",
     "server.mjs",
     "README.md",
+    "PRIVACY.md",
+    "SECURITY.md",
     "LICENSE"
   ],
   "scripts": {
     "dev": "node server.mjs",
     "start": "node bin/tokensflow.mjs",
     "test": "node --test",
-    "check": "node --check server.mjs && node --check bin/tokensflow.mjs && node --check public/app.js && node --check public/metrics.js && node --check lib/codex-source.js && node --check lib/fallback-provider-source.js && node --check lib/json-source.js && node --check lib/usage-schema.js && node --check lib/usage-source.js"
+    "check": "node --check server.mjs && node --check bin/tokensflow.mjs && node --check public/app.js && node --check public/metrics.js && node --check lib/codex-source.js && node --check lib/fallback-provider-source.js && node --check lib/json-source.js && node --check lib/snapshot-history.js && node --check lib/usage-schema.js && node --check lib/usage-source.js"
   },
   "keywords": [
     "tokens",

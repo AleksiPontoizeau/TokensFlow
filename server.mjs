@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createSnapshotRecorder } from "./lib/snapshot-recorder.js";
+import { readSnapshotHistory } from "./lib/snapshot-history.js";
 import { createUsageSource } from "./lib/usage-source.js";
 import { assertUsagePayload } from "./lib/usage-schema.js";
 
@@ -47,8 +48,7 @@ function readRequestBody(request) {
   });
 }
 
-async function handleUsage(request, response) {
-  const runtimeConfig = createRuntimeConfig();
+async function handleUsage(request, response, runtimeConfig = createRuntimeConfig()) {
   const usageSource = createUsageSource(runtimeConfig);
 
   if (request.method === "GET") {
@@ -76,6 +76,18 @@ async function handleUsage(request, response) {
   }
 
   sendJson(response, 405, { error: "Method not allowed." });
+}
+
+async function handleSnapshots(request, response, runtimeConfig = createRuntimeConfig()) {
+  if (request.method !== "GET") {
+    sendJson(response, 405, { error: "Method not allowed." });
+    return;
+  }
+
+  const history = await readSnapshotHistory({
+    filePath: runtimeConfig.snapshot.filePath
+  });
+  sendJson(response, 200, history);
 }
 
 function createRuntimeConfig() {
@@ -137,11 +149,18 @@ function serveStatic(request, response) {
   });
 }
 
-export function createTokensFlowServer() {
+export function createTokensFlowServer(options = {}) {
   return http.createServer(async (request, response) => {
+    const runtimeConfig = options.runtimeConfig || createRuntimeConfig();
+
     try {
+      if (request.url?.startsWith("/api/snapshots")) {
+        await handleSnapshots(request, response, runtimeConfig);
+        return;
+      }
+
       if (request.url?.startsWith("/api/usage")) {
-        await handleUsage(request, response);
+        await handleUsage(request, response, runtimeConfig);
         return;
       }
 
@@ -156,7 +175,7 @@ export function createTokensFlowServer() {
 
 export function startServer(options = {}) {
   const server = createTokensFlowServer();
-  const listenPort = Number(options.port || port);
+  const listenPort = Number(options.port ?? port);
   const runtimeConfig = createRuntimeConfig();
   const usageSource = createUsageSource(runtimeConfig);
   const recorder = createSnapshotRecorder(usageSource, {
@@ -172,6 +191,71 @@ export function startServer(options = {}) {
   server.on("close", () => recorder.stop());
 
   return server;
+}
+
+export async function startServerOnAvailablePort(options = {}) {
+  const server = createTokensFlowServer();
+  const requestedPort = Number(options.port ?? port);
+  const runtimeConfig = createRuntimeConfig();
+  const usageSource = createUsageSource(runtimeConfig);
+  const recorder = createSnapshotRecorder(usageSource, {
+    ...runtimeConfig.snapshot,
+    ...(options.snapshotRecorder || {})
+  });
+  const listenPort = await listenOnAvailablePort(server, {
+    port: requestedPort,
+    allowFallback: options.allowPortFallback !== false,
+    maxPort: Number(options.maxPort || requestedPort + 10)
+  });
+
+  if (options.log !== false) {
+    console.log(`TokensFlow running at http://127.0.0.1:${listenPort}`);
+    console.log(`Snapshots: ${recorder.filePath} every ${Math.round(recorder.intervalMs / 60_000)}m`);
+  }
+  recorder.start();
+  server.on("close", () => recorder.stop());
+
+  return {
+    server,
+    port: listenPort,
+    snapshotFile: recorder.filePath,
+    snapshotIntervalMs: recorder.intervalMs
+  };
+}
+
+export function listenOnAvailablePort(server, options = {}) {
+  const host = options.host || "127.0.0.1";
+  const requestedPort = Number(options.port ?? port);
+  const allowFallback = options.allowFallback !== false;
+  const maxPort = Number(options.maxPort || requestedPort + 10);
+
+  return new Promise((resolve, reject) => {
+    let currentPort = requestedPort;
+
+    function tryListen() {
+      const onError = (error) => {
+        server.off("listening", onListening);
+        if (error?.code === "EADDRINUSE" && allowFallback && currentPort < maxPort) {
+          currentPort += 1;
+          tryListen();
+          return;
+        }
+
+        reject(error);
+      };
+
+      const onListening = () => {
+        server.off("error", onError);
+        resolve(currentPort);
+      };
+
+      server.once("error", onError);
+      server.once("listening", onListening);
+      server.listen(currentPort, host);
+    }
+
+    tryListen();
+  });
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {

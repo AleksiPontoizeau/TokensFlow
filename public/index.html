@@ -95,6 +95,25 @@
             </section>
           </div>
 
+          <section class="timeline" aria-labelledby="timelineTitle">
+            <div class="timeline-head">
+              <div>
+                <h2 id="timelineTitle">Quota Timeline</h2>
+                <p class="section-subtitle">from local snapshots every 5m</p>
+              </div>
+              <p class="timeline-meta" id="snapshotMeta">waiting for snapshots</p>
+            </div>
+            <div class="timeline-chart" aria-label="Local quota snapshot timeline">
+              <div class="snapshot-bars" id="snapshotBars"></div>
+              <div class="snapshot-axis" id="snapshotAxis" aria-hidden="true"></div>
+            </div>
+            <p class="timeline-empty" id="snapshotEmpty" hidden>No local snapshots yet. Keep TokensFlow running and this timeline will fill itself.</p>
+            <div class="timeline-legend">
+              <span><i class="legend-dot quota-dot"></i>5h quota <strong id="snapshotQuotaLatest">--</strong></span>
+              <span><i class="legend-dot weekly-dot"></i>weekly quota <strong id="snapshotWeeklyLatest">--</strong></span>
+            </div>
+          </section>
+
           <section class="rhythm" aria-labelledby="rhythmTitle">
             <div>
               <h2 id="rhythmTitle">Last 24h Codex Activity</h2>
