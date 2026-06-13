@@ -1,14 +1,14 @@
 # TokensFlow
 
-A tiny open-source local companion for watching the latest observed Codex quota snapshot, reset time, local session activity, and local snapshot history.
+A tiny open-source local companion for watching the latest observed Codex quota file, reset time, local session activity, and local history.
 
-TokensFlow is intentionally small: plain HTML, CSS, browser JavaScript, and a Node server with no runtime dependencies. The main experience is Codex-first: it reads local Codex session data, shows the latest observed quota snapshot, and records local snapshots every 5 minutes so you can see quota movement over time.
+TokensFlow is intentionally small: plain HTML, CSS, browser JavaScript, and a Node server. The main experience is Codex-first: it reads the local Codex `rate_limits` events, shows the latest observed quota file, and records a small local history every 5 minutes so you can see quota movement over time.
 
 ## Important Disclaimer
 
 TokensFlow is not affiliated with OpenAI.
 
-There is no official public Codex quota API used by this tool. TokensFlow reads local Codex session logs and shows the latest observed `rate_limits` event written by Codex. It may lag behind the Codex UI if Codex has not written a new `rate_limits` event yet.
+There is no official public Codex quota API used by this tool. TokensFlow reads local Codex session logs and shows the latest observed `rate_limits` event written by Codex. That is the same local quota signal exposed in Codex session files, not a TokensFlow estimate. It may lag behind the Codex UI if Codex has not written a new `rate_limits` event yet.
 
 TokensFlow should be treated as a lightweight local monitor, not as an official billing, quota, or entitlement source.
 
@@ -20,21 +20,35 @@ Published package workflow:
 npx tokensflow
 ```
 
-The CLI asks which provider you want to watch:
-
-- Codex
-- Claude Code
-- Cursor
-
-Scriptable examples:
+TokensFlow launches directly in Codex mode:
 
 ```bash
 npx tokensflow --tool codex
-npx tokensflow --tool claude
-npx tokensflow --tool cursor
 ```
 
 You can still pass a project path if you want, but it is optional. Without a path, TokensFlow uses the current terminal folder.
+
+Menu bar mode for macOS:
+
+```bash
+npx tokensflow --tray
+```
+
+This starts a detached local worker that shows the latest observed 5h Codex quota remaining in the macOS menu bar, refreshes every 60 seconds, and sends a macOS notification when the quota drops below 20% and again below 10%.
+
+The tray uses the `systray2` package from the node-systray project. If the native tray cannot start on macOS, TokensFlow writes a SwiftBar fallback plugin to:
+
+```text
+~/Library/Application Support/SwiftBar/tokensflow.1m.sh
+```
+
+That plugin calls:
+
+```bash
+npx tokensflow --status
+```
+
+`--status` prints SwiftBar-ready output, with the first line formatted as the menu bar label.
 
 If port `3000` is busy and you did not set `PORT`, TokensFlow automatically tries `3001` through `3010` and prints the URL it selected.
 
@@ -52,33 +66,35 @@ npm run dev
 
 TokensFlow is also a PWA. From a supported browser, install it as a standalone app from the browser install menu.
 
-## Automatic Local Snapshots
+## Automatic Local History
 
-When TokensFlow is running, it automatically records the latest observed Codex quota snapshot every 5 minutes. There is no extra setup and no macOS automation to install.
+When TokensFlow is running, it reads the latest Codex `rate_limits` event directly from local Codex session files. Separately, it records a local history point every 5 minutes. There is no extra setup and no macOS automation to install.
 
-Snapshots are written as JSONL:
+History points are written as JSONL:
 
 ```text
 ~/.tokensflow/snapshots.jsonl
 ```
 
-This records what Codex has already written locally. It does not force Codex to create a new `rate_limits` event.
+This records what TokensFlow has observed from Codex's local files. It does not force Codex to create a new `rate_limits` event.
 
-The UI reads those snapshots from `/api/snapshots` and renders a local quota timeline for the last 24 hours. If the snapshot file does not exist yet, the timeline shows an empty state instead of failing.
+The UI reads those history points from `/api/history` and renders a local quota timeline for the last 24 hours. If the history file does not exist yet, the timeline shows an empty state instead of failing.
 
 Useful controls:
 
 ```bash
-TOKENSFLOW_SNAPSHOTS=0                  # disable snapshot recording
-TOKENSFLOW_SNAPSHOT_INTERVAL_MS=300000  # default: 5 minutes
-TOKENSFLOW_SNAPSHOT_FILE=...            # custom JSONL output path
+TOKENSFLOW_HISTORY=0                    # disable local history recording
+TOKENSFLOW_HISTORY_INTERVAL_MS=300000   # default: 5 minutes
+TOKENSFLOW_HISTORY_FILE=...             # custom JSONL output path
 ```
 
-## Codex Snapshot Mode
+The older `TOKENSFLOW_SNAPSHOT_*` names still work as compatibility aliases, but `TOKENSFLOW_HISTORY_*` is the preferred V3 vocabulary.
+
+## Codex Local File Mode
 
 By default, TokensFlow reads:
 
-- `~/.codex/sessions/**/*.jsonl` for the latest observed Codex `rate_limits` snapshot
+- `~/.codex/sessions/**/*.jsonl` for the latest observed Codex `rate_limits` event
 - `~/.codex/state_5.sqlite` for local thread/session token usage
 - `~/.codex/goals_1.sqlite` for optional local goal metadata
 
@@ -113,7 +129,7 @@ Useful environment variables:
 
 ```bash
 TOKENSFLOW_SOURCE=auto              # auto, codex, or json
-TOKENSFLOW_TOOL=codex               # codex, claude, cursor, or json
+TOKENSFLOW_TOOL=codex               # codex or json
 TOKENSFLOW_BUDGET_TOKENS=2000000    # fallback budget when no goal budget exists
 TOKENSFLOW_WEEKLY_BUDGET_TOKENS=10000000
 TOKENSFLOW_CWD="$PWD"               # project whose latest Codex thread should be watched
@@ -121,8 +137,6 @@ TOKENSFLOW_THREAD_ID=...            # optional exact Codex thread id
 TOKENSFLOW_CODEX_STATE_DB=...       # optional custom state_5.sqlite path
 TOKENSFLOW_CODEX_GOALS_DB=...       # optional custom goals_1.sqlite path
 TOKENSFLOW_CODEX_SESSIONS_ROOT=...  # optional custom Codex sessions path
-TOKENSFLOW_CLAUDE_USAGE_FILE=...    # optional JSON usage source for Claude Code
-TOKENSFLOW_CURSOR_USAGE_FILE=...    # optional JSON usage source for Cursor
 ```
 
 Example:
@@ -137,7 +151,7 @@ npm run dev
 
 TokensFlow is accurate to the latest local Codex `rate_limits` event it can read.
 
-It is not guaranteed to match the Codex UI second-by-second. If Codex has newer quota state in memory but has not written a new session-log event yet, TokensFlow will show the latest older snapshot and mark the source as `recent`, `idle`, or `old`.
+It is not guaranteed to match the Codex UI second-by-second. If Codex has newer quota state in memory but has not written a new session-log event yet, TokensFlow will show the latest local file value and mark the source as `recent`, `idle`, or `old`.
 
 Freshness states:
 
@@ -146,23 +160,24 @@ Freshness states:
 - `old`: source observed 30 minutes ago or more
 - `offline`: no Codex `rate_limits` event was found
 
-Best use: a beautiful, lightweight local monitor that makes quota snapshots easier to see without opening settings.
+Best use: a beautiful, lightweight local monitor that makes the local Codex quota file easier to see without opening settings.
 
 ## Why Not Exact?
 
-Codex may show fresher quota state in its own UI than it has written to local session logs. TokensFlow can only read local files that already exist. That is why the app says `latest observed` and shows freshness instead of claiming official real-time accuracy.
+Codex may show fresher quota state in its own UI than it has written to local session logs. TokensFlow can only read local files that already exist. That is why the app shows freshness instead of claiming official real-time accuracy.
 
-Snapshots improve the product experience by preserving what TokensFlow has observed over time, but they still depend on the latest local Codex event.
+Local history improves the product experience by preserving what TokensFlow has observed over time, but the current quota cards still come from the latest local Codex `rate_limits` event.
 
 ## Local API
 
 TokensFlow exposes local-only endpoints on `127.0.0.1`:
 
-- `GET /api/usage` returns the latest observed usage snapshot.
-- `GET /api/snapshots` returns the configured local snapshot history.
+- `GET /api/usage` returns the latest observed local Codex usage.
+- `GET /api/history` returns the configured local history.
+- `GET /api/snapshots` is kept as a compatibility alias for older builds.
 - `POST /api/usage` updates the JSON fallback source for demos or custom local data.
 
-`/api/snapshots` never accepts a file path from the browser. It only reads the snapshot file configured on the server.
+The history endpoints never accept a file path from the browser. They only read the history file configured on the server.
 
 ## Privacy And Security
 
@@ -173,14 +188,7 @@ TokensFlow is local-only and has no telemetry.
 
 ## Provider Status
 
-Codex is automatic today because Codex stores local session logs and local thread token usage on disk.
-
-Claude Code and Cursor can be selected from the CLI now. If TokensFlow cannot find a local machine-readable quota source, it shows a clear `not connected` state and still supports a JSON usage file via:
-
-```bash
-TOKENSFLOW_CLAUDE_USAGE_FILE=~/.tokensflow/claude-usage.json npx tokensflow --tool claude
-TOKENSFLOW_CURSOR_USAGE_FILE=~/.tokensflow/cursor-usage.json npx tokensflow --tool cursor
-```
+Codex is the only supported live provider in this release because Codex stores local session logs and quota events on disk. Claude Code, Cursor, Windsurf, and API-provider adapters should stay out of the CLI until their local data sources are reliable enough to label honestly.
 
 ## Update Live Data
 
@@ -225,9 +233,9 @@ npm run check
 
 ## Roadmap
 
-- Improve the local quota timeline and snapshot history.
+- Improve the local quota timeline and history.
 - Polish `npx tokensflow` launch behavior and first-run states.
-- Add a desktop tray wrapper after the local web companion is trustworthy.
+- Improve the macOS tray and SwiftBar fallback polish.
 - Add deeper Claude Code and Cursor adapters only when their local data sources are reliable enough to label honestly.
 
 ## License

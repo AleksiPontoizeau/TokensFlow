@@ -11,7 +11,8 @@ import { assertUsagePayload } from "./lib/usage-schema.js";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, "public");
 const dataFile = path.join(__dirname, "data", "usage.json");
-const snapshotFile = process.env.TOKENSFLOW_SNAPSHOT_FILE
+const snapshotFile = process.env.TOKENSFLOW_HISTORY_FILE
+  || process.env.TOKENSFLOW_SNAPSHOT_FILE
   || path.join(os.homedir(), ".tokensflow", "snapshots.jsonl");
 const port = Number(process.env.PORT || 3000);
 const mimeTypes = new Map([
@@ -57,6 +58,7 @@ async function handleUsage(request, response, runtimeConfig = createRuntimeConfi
       ...usage,
       debug: {
         ...(usage.debug || {}),
+        history: runtimeConfig.snapshot,
         snapshots: runtimeConfig.snapshot
       }
     });
@@ -97,8 +99,12 @@ function createRuntimeConfig() {
     source,
     dataFile,
     snapshot: {
-      enabled: process.env.TOKENSFLOW_SNAPSHOTS !== "0",
-      intervalMs: Number(process.env.TOKENSFLOW_SNAPSHOT_INTERVAL_MS || 5 * 60 * 1000),
+      enabled: (process.env.TOKENSFLOW_HISTORY || process.env.TOKENSFLOW_SNAPSHOTS) !== "0",
+      intervalMs: Number(
+        process.env.TOKENSFLOW_HISTORY_INTERVAL_MS
+          || process.env.TOKENSFLOW_SNAPSHOT_INTERVAL_MS
+          || 5 * 60 * 1000
+      ),
       filePath: snapshotFile
     },
     codex: {
@@ -154,7 +160,7 @@ export function createTokensFlowServer(options = {}) {
     const runtimeConfig = options.runtimeConfig || createRuntimeConfig();
 
     try {
-      if (request.url?.startsWith("/api/snapshots")) {
+      if (request.url?.startsWith("/api/history") || request.url?.startsWith("/api/snapshots")) {
         await handleSnapshots(request, response, runtimeConfig);
         return;
       }
@@ -185,7 +191,7 @@ export function startServer(options = {}) {
 
   server.listen(listenPort, "127.0.0.1", () => {
     console.log(`TokensFlow running at http://127.0.0.1:${listenPort}`);
-    console.log(`Snapshots: ${recorder.filePath} every ${Math.round(recorder.intervalMs / 60_000)}m`);
+    console.log(`History: ${recorder.filePath} every ${Math.round(recorder.intervalMs / 60_000)}m`);
     recorder.start();
   });
   server.on("close", () => recorder.stop());
@@ -210,7 +216,7 @@ export async function startServerOnAvailablePort(options = {}) {
 
   if (options.log !== false) {
     console.log(`TokensFlow running at http://127.0.0.1:${listenPort}`);
-    console.log(`Snapshots: ${recorder.filePath} every ${Math.round(recorder.intervalMs / 60_000)}m`);
+    console.log(`History: ${recorder.filePath} every ${Math.round(recorder.intervalMs / 60_000)}m`);
   }
   recorder.start();
   server.on("close", () => recorder.stop());

@@ -12,7 +12,7 @@ describe("createSnapshotRecorder", () => {
     const usageSource = {
       async read() {
         return {
-          source: "codex-rate-limits · plus",
+          source: "codex local file · plus",
           quotaMode: "codex-rate-limit",
           sourceObservedAt: "2026-06-07T13:00:00.000Z",
           quotaRemainingPercent: 96,

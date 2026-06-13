@@ -12,14 +12,16 @@ const elements = {
   burnRateSuffix: document.querySelector("#burnRateSuffix"),
   costLabel: document.querySelector("#costLabel"),
   costSuffix: document.querySelector("#costSuffix"),
+  costSummary: document.querySelector("#costSummary"),
   debugPanel: document.querySelector("#debugPanel"),
   historyAxis: document.querySelector("#historyAxis"),
   historyBars: document.querySelector("#historyBars"),
   hoursLeft: document.querySelector("#hoursLeft"),
   hoursLeftSuffix: document.querySelector("#hoursLeftSuffix"),
   inputTokens: document.querySelector("#inputTokens"),
-  meterFill: document.querySelector("#meterFill"),
   outputTokens: document.querySelector("#outputTokens"),
+  quotaAsciiBar: document.querySelector("#quotaAsciiBar"),
+  fiveHourQuotaBlock: document.querySelector("#fiveHourQuotaBlock"),
   quotaResetIn: document.querySelector("#quotaResetIn"),
   quotaResetLabel: document.querySelector("#quotaResetLabel"),
   refreshRate: document.querySelector("#refreshRate"),
@@ -38,10 +40,13 @@ const elements = {
   statusLabel: document.querySelector("#statusLabel"),
   updatedAt: document.querySelector("#updatedAt"),
   usedTokens: document.querySelector("#usedTokens"),
+  weeklyAsciiBar: document.querySelector("#weeklyAsciiBar"),
   weeklyPercent: document.querySelector("#weeklyPercent"),
   weeklyPercentSuffix: document.querySelector("#weeklyPercentSuffix"),
   weeklyRemaining: document.querySelector("#weeklyRemaining"),
-  weeklyRemainingSuffix: document.querySelector("#weeklyRemainingSuffix")
+  weeklyRemainingSuffix: document.querySelector("#weeklyRemainingSuffix"),
+  weeklyQuotaBlock: document.querySelector("#weeklyQuotaBlock"),
+  weeklyResetIn: document.querySelector("#weeklyResetIn")
 };
 
 elements.refreshRate.textContent = `every ${refreshMs / 1000}s`;
@@ -61,12 +66,12 @@ async function fetchUsage() {
 }
 
 async function fetchSnapshotHistory() {
-  const response = await fetch("/api/snapshots", {
+  const response = await fetch("/api/history", {
     cache: "no-store"
   });
 
   if (!response.ok) {
-    throw new Error(`Snapshots endpoint returned ${response.status}.`);
+    throw new Error(`History endpoint returned ${response.status}.`);
   }
 
   return response.json();
@@ -77,13 +82,30 @@ function renderUsage(usage) {
   const isCodexQuota = usage.quotaMode === "codex-rate-limit";
   const isQuotaUnavailable = usage.quotaMode === "quota-unavailable";
   const freshness = getFreshnessState(usage);
-  const remainingRounded = Math.round(
+  const remainingRounded = clampPercent(Math.round(
     isCodexQuota && Number.isFinite(Number(usage.quotaRemainingPercent))
       ? Number(usage.quotaRemainingPercent)
       : metrics.remainingPercent
-  );
+  ));
+  const quotaPercent = isQuotaUnavailable ? null : remainingRounded;
+  const weeklyPercent = isQuotaUnavailable ? null : getWeeklyRemainingPercent(usage);
 
-  elements.remainingPercent.textContent = isQuotaUnavailable ? "--" : String(remainingRounded).padStart(2, "0");
+  renderQuotaAnchor({
+    block: elements.fiveHourQuotaBlock,
+    number: elements.remainingPercent,
+    asciiBar: elements.quotaAsciiBar,
+    reset: elements.quotaResetIn,
+    percent: quotaPercent,
+    resetAt: usage.quotaResetAt || usage.resetAt
+  });
+  renderQuotaAnchor({
+    block: elements.weeklyQuotaBlock,
+    number: elements.weeklyRemaining,
+    asciiBar: elements.weeklyAsciiBar,
+    reset: elements.weeklyResetIn,
+    percent: weeklyPercent,
+    resetAt: usage.weeklyResetAt
+  });
   elements.remainingTokens.textContent = isQuotaUnavailable
     ? "quota"
     : isCodexQuota
@@ -112,14 +134,13 @@ function renderUsage(usage) {
     elements.hoursLeft.textContent = "Status:";
     elements.hoursLeftSuffix.textContent = freshness.status;
   }
-  elements.quotaResetIn.textContent = isQuotaUnavailable ? "--" : formatTimeUntil(usage.quotaResetAt || usage.resetAt);
   elements.quotaResetLabel.textContent = isQuotaUnavailable ? "--" : formatReset(usage.quotaResetAt || usage.resetAt);
-  elements.statusLabel.textContent = `${freshness.status} snapshot`;
+  elements.statusLabel.textContent = `${freshness.status} local file`;
   elements.statusLabel.className = `status-${freshness.status}`;
-  elements.meterFill.style.width = isQuotaUnavailable ? "0%" : `${remainingRounded}%`;
 
   elements.inputTokens.textContent = formatCompactNumber(usage.inputTokens);
   elements.outputTokens.textContent = formatCompactNumber(usage.outputTokens);
+  elements.costSummary.textContent = `${formatUsd(usage.todayCostUsd)} today · ${formatUsd(usage.last24hCostUsd)} last 24h`;
   if (Number(usage.retailCostUsd) > 0) {
     elements.costLabel.textContent = `$${Number(usage.retailCostUsd).toFixed(2)}`;
     elements.costSuffix.textContent = "at retail";
@@ -141,7 +162,6 @@ function renderUsage(usage) {
 
 function renderWeeklyQuota(usage) {
   if (usage.quotaMode === "quota-unavailable") {
-    elements.weeklyRemaining.textContent = "--";
     elements.weeklyRemainingSuffix.textContent = "left";
     elements.weeklyPercent.textContent = "--";
     elements.weeklyPercentSuffix.textContent = "remaining";
@@ -152,9 +172,6 @@ function renderWeeklyQuota(usage) {
     const weeklyRemainingPercent = Number(usage.weeklyRemainingPercent);
     const weeklyUsedPercent = Number(usage.weeklyUsedPercent);
 
-    elements.weeklyRemaining.textContent = Number.isFinite(weeklyRemainingPercent)
-      ? `${Math.round(weeklyRemainingPercent)}%`
-      : "--";
     elements.weeklyRemainingSuffix.textContent = "left";
     elements.weeklyPercent.textContent = Number.isFinite(weeklyUsedPercent)
       ? `${Math.round(weeklyUsedPercent)}%`
@@ -168,10 +185,76 @@ function renderWeeklyQuota(usage) {
   const weeklyRemaining = Math.max(weeklyBudget - weeklyUsed, 0);
   const weeklyPercent = weeklyBudget === 0 ? 0 : Math.max((weeklyRemaining / weeklyBudget) * 100, 0);
 
-  elements.weeklyRemaining.textContent = formatCompactNumber(weeklyRemaining);
   elements.weeklyRemainingSuffix.textContent = "left";
   elements.weeklyPercent.textContent = `${Math.round(weeklyPercent)}%`;
   elements.weeklyPercentSuffix.textContent = "remaining";
+}
+
+function renderQuotaAnchor({ block, number, asciiBar, reset, percent, resetAt }) {
+  const tone = quotaTone(percent);
+  block.dataset.tone = tone;
+  number.textContent = percent === null ? "--" : String(Math.round(percent)).padStart(2, "0");
+  asciiBar.textContent = asciiProgressBar(percent);
+  reset.textContent = percent === null ? "reset unavailable" : `resets in ${formatTimeUntil(resetAt)}`;
+}
+
+function formatUsd(value) {
+  const amount = Number(value);
+  if (!Number.isFinite(amount) || amount < 0) {
+    return "$0.00";
+  }
+
+  return `$${amount.toFixed(2)}`;
+}
+
+function getWeeklyRemainingPercent(usage) {
+  if (usage.quotaMode === "codex-rate-limit") {
+    const remaining = Number(usage.weeklyRemainingPercent);
+    return Number.isFinite(remaining) ? clampPercent(Math.round(remaining)) : null;
+  }
+
+  const weeklyBudget = Math.max(Number(usage.weeklyBudgetTokens) || 0, 0);
+  const weeklyUsed = Math.max(Number(usage.weeklyUsedTokens) || 0, 0);
+  if (weeklyBudget <= 0) {
+    return null;
+  }
+
+  return clampPercent(Math.round(((weeklyBudget - weeklyUsed) / weeklyBudget) * 100));
+}
+
+function asciiProgressBar(percent, width = 16) {
+  if (percent === null || !Number.isFinite(Number(percent))) {
+    return `${"░".repeat(width)} --%`;
+  }
+
+  const clamped = clampPercent(percent);
+  const filled = Math.round((clamped / 100) * width);
+  return `${"█".repeat(filled)}${"░".repeat(width - filled)} ${String(Math.round(clamped)).padStart(2, " ")}%`;
+}
+
+function quotaTone(percent) {
+  if (percent === null || !Number.isFinite(Number(percent))) {
+    return "offline";
+  }
+
+  if (percent > 50) {
+    return "green";
+  }
+
+  if (percent >= 20) {
+    return "yellow";
+  }
+
+  return "red";
+}
+
+function clampPercent(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) {
+    return 0;
+  }
+
+  return Math.max(0, Math.min(100, number));
 }
 
 function renderHistory(history) {
@@ -242,7 +325,7 @@ function renderSnapshotHistory(history) {
   elements.snapshotBars.innerHTML = "";
   elements.snapshotAxis.innerHTML = "";
   elements.snapshotEmpty.hidden = hasSnapshots;
-  elements.snapshotEmpty.textContent = history.message || "No local snapshots yet. Keep TokensFlow running and this timeline will fill itself.";
+  elements.snapshotEmpty.textContent = history.message || "No local history yet. Keep TokensFlow running and this timeline will fill itself.";
   elements.snapshotMeta.textContent = snapshotMetaLabel(history);
   elements.snapshotQuotaLatest.textContent = percentLabel(summary.quotaLatest);
   elements.snapshotWeeklyLatest.textContent = percentLabel(summary.weeklyLatest);
@@ -256,7 +339,7 @@ function renderSnapshotHistory(history) {
       `hour: ${bucket.label}:00`,
       `5h quota: ${percentLabel(bucket.quotaRemainingPercent)}`,
       `weekly quota: ${percentLabel(bucket.weeklyRemainingPercent)}`,
-      `snapshots: ${bucket.count || 0}`
+      `history points: ${bucket.count || 0}`
     ].join("\n");
 
     const quota = document.createElement("span");
@@ -284,14 +367,14 @@ function renderSnapshotError(error) {
   if (lastSnapshotHistory) {
     renderSnapshotHistory({
       ...lastSnapshotHistory,
-      message: `Snapshot API error. Showing last loaded history.`
+      message: `History API error. Showing last loaded history.`
     });
     return;
   }
 
   renderSnapshotHistory({
     status: "error",
-    message: error?.message || "Snapshot API error.",
+    message: error?.message || "History API error.",
     hourlyBuckets24h: emptySnapshotBuckets(),
     summary: {},
     debug: {}
@@ -447,7 +530,7 @@ async function tick() {
         ...lastUsage,
         source: `${lastUsage.source || "local"} · api error`
       });
-      elements.statusLabel.textContent = "offline snapshot";
+      elements.statusLabel.textContent = "offline local file";
       elements.statusLabel.className = "status-offline";
     } else {
       renderUsage(offlineUsage(error));
@@ -485,14 +568,14 @@ if ("caches" in window) {
 
 function snapshotMetaLabel(history) {
   if (history.status === "ready") {
-    return `${history.summary?.count || 0} snapshots · last 24h`;
+    return `${history.summary?.count || 0} points · last 24h`;
   }
 
   if (history.status === "error") {
-    return "snapshot file unavailable";
+    return "history file unavailable";
   }
 
-  return "no snapshots yet";
+  return "no history yet";
 }
 
 function percentLabel(value) {
@@ -525,14 +608,14 @@ function appendSnapshotDebug(history) {
   const debug = history.debug || {};
   const lines = [
     "",
-    "snapshot history:",
+    "local history:",
     `status: ${history.status || "--"}`,
     `message: ${history.message || "--"}`,
     `file: ${debug.filePath || "--"}`,
-    `parsed snapshots: ${debug.parsedSnapshots ?? 0}`,
+    `parsed history points: ${debug.parsedSnapshots ?? 0}`,
     `malformed lines: ${debug.malformedLines ?? 0}`,
     `old lines: ${debug.oldLines ?? 0}`
   ];
-  const base = elements.debugPanel.textContent.split("\n\nsnapshot history:")[0];
+  const base = elements.debugPanel.textContent.split("\n\nlocal history:")[0];
   elements.debugPanel.textContent = `${base}${lines.join("\n")}`;
 }
