@@ -1,7 +1,7 @@
 {
   "name": "tokensflow",
-  "version": "0.2.0",
-  "description": "A tiny open-source local dashboard for the latest observed Codex quota snapshot.",
+  "version": "0.3.0",
+  "description": "A tiny open-source local dashboard for the latest observed Codex quota file.",
   "type": "module",
   "bin": {
     "tokensflow": "bin/tokensflow.mjs"
@@ -21,7 +21,7 @@
     "dev": "node server.mjs",
     "start": "node bin/tokensflow.mjs",
     "test": "node --test",
-    "check": "node --check server.mjs && node --check bin/tokensflow.mjs && node --check public/app.js && node --check public/metrics.js && node --check lib/codex-source.js && node --check lib/fallback-provider-source.js && node --check lib/json-source.js && node --check lib/snapshot-history.js && node --check lib/usage-schema.js && node --check lib/usage-source.js"
+    "check": "node --check server.mjs && node --check bin/tokensflow.mjs && node --check public/app.js && node --check public/metrics.js && node --check lib/codex-source.js && node --check lib/fallback-provider-source.js && node --check lib/json-source.js && node --check lib/snapshot-history.js && node --check lib/status.js && node --check lib/tray.js && node --check lib/usage-schema.js && node --check lib/usage-source.js"
   },
   "keywords": [
     "tokens",
@@ -29,5 +29,8 @@
     "open-source",
     "developer-tools"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "systray2": "^2.1.4"
+  }
 }

@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>TokensFlow</title>
-    <meta name="description" content="A local open-source dashboard for the latest observed Codex quota snapshot." />
+    <meta name="description" content="A local open-source dashboard for the latest observed Codex quota file." />
     <meta name="theme-color" content="#061626" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
@@ -19,95 +19,88 @@
             <span class="dot dot-yellow"></span>
             <span class="dot dot-green"></span>
           </div>
-          <p class="window-title">tokensflow -- local snapshot</p>
+          <p class="window-title">tokensflow -- codex local file</p>
           <p class="source" id="sourceLabel">booting</p>
         </header>
 
         <div class="screen">
           <div class="scanline" aria-hidden="true"></div>
-          <div class="headline">
-            <p class="kicker">local Codex quota snapshot</p>
-            <h1>TOKENS FLOW</h1>
+          <div class="headline compact-headline">
+            <div>
+              <p class="kicker">Codex local rate_limits file</p>
+              <h1>TOKENS FLOW</h1>
+            </div>
+            <p class="identity">
+              <span id="statusLabel">waiting</span> · refreshes <span id="refreshRate">every 2s</span><span id="resetLabel" hidden></span>
+            </p>
           </div>
 
-          <div class="hero-grid">
-            <section class="score" aria-labelledby="remainingLabel">
-              <p class="eyebrow" id="remainingLabel">latest observed quota</p>
-              <div class="score-line">
-                <span class="score-value" id="remainingPercent">--</span>
-                <span class="score-unit">%</span>
+          <div class="quota-grid" aria-label="Dominant Codex quota meters">
+            <section class="quota-anchor" id="fiveHourQuotaBlock" aria-labelledby="remainingLabel">
+              <div class="quota-anchor-head">
+                <p class="eyebrow" id="remainingLabel">5h quota</p>
+                <p class="quota-reset" id="quotaResetIn">resets in --</p>
               </div>
-              <p class="score-caption">
-                <span id="remainingTokens">--</span> <span id="scoreCaptionSuffix">left of</span> <span id="budgetTokens">--</span>
+              <div class="quota-number-line">
+                <span class="quota-number" id="remainingPercent">--</span>
+                <span class="quota-unit">%</span>
+              </div>
+              <pre class="ascii-bar" id="quotaAsciiBar">░░░░░░░░░░░░ --%</pre>
+              <p class="quota-caption">
+                <span id="remainingTokens">--</span> <span id="scoreCaptionSuffix">left in</span> <span id="budgetTokens">5h quota</span>
               </p>
             </section>
 
-            <aside class="signal" aria-label="Local quota snapshot signal">
-              <pre class="wave" aria-hidden="true">
-   ╭╮      ╭╮
-╭──╯╰─╮  ╭─╯╰──╮
-│ token│──│flow │
-╰─╮╭──╯  ╰──╮╭─╯
-  ╰╯ local ╰╯
-              </pre>
-              <div class="swatches" aria-hidden="true">
-                <span class="swatch swatch-pink"></span>
-                <span class="swatch swatch-orange"></span>
-                <span class="swatch swatch-green"></span>
-                <span class="swatch swatch-yellow"></span>
-                <span class="swatch swatch-blue"></span>
-                <span class="swatch swatch-violet"></span>
+            <section class="quota-anchor" id="weeklyQuotaBlock" aria-labelledby="weeklyQuotaTitle">
+              <div class="quota-anchor-head">
+                <p class="eyebrow" id="weeklyQuotaTitle">weekly quota</p>
+                <p class="quota-reset" id="weeklyResetIn">resets in --</p>
               </div>
-            </aside>
+              <div class="quota-number-line">
+                <span class="quota-number" id="weeklyRemaining">--</span>
+                <span class="quota-unit">%</span>
+              </div>
+              <pre class="ascii-bar" id="weeklyAsciiBar">░░░░░░░░░░░░ --%</pre>
+              <p class="quota-caption">
+                <span id="weeklyRemainingSuffix">left</span> · <span id="weeklyPercent">--</span> <span id="weeklyPercentSuffix">used</span>
+              </p>
+            </section>
           </div>
 
-          <p class="identity">
-            <span id="statusLabel">waiting</span> · refreshes <span id="refreshRate">every 2s</span><span id="resetLabel" hidden></span>
-          </p>
+          <div class="secondary-grid">
+            <section class="panel secondary-panel cost-panel">
+              <h2>cost</h2>
+              <p><strong id="costSummary">$0.00 today · $0.00 last 24h</strong></p>
+              <p>Codex Plus estimate</p>
+            </section>
 
-          <div class="meter" aria-label="Latest observed Codex quota meter">
-            <span id="meterFill"></span>
-          </div>
-
-          <div class="stats-grid">
-            <section class="panel">
-              <h2>Local Meter</h2>
+            <section class="panel secondary-panel">
+              <h2>local meter</h2>
               <p><strong id="usedTokens">--</strong> parsed local tokens</p>
               <p><strong id="costLabel">from</strong> <span id="costSuffix">Codex session logs</span></p>
             </section>
 
-            <section class="panel">
-              <h2>5h Quota</h2>
-              <p><strong id="quotaResetIn">--</strong> to reset</p>
-              <p><strong id="quotaResetLabel">--</strong> reset</p>
-            </section>
-
-            <section class="panel">
-              <h2>Weekly Quota</h2>
-              <p><strong id="weeklyRemaining">--</strong> <span id="weeklyRemainingSuffix">left</span></p>
-              <p><strong id="weeklyPercent">--</strong> <span id="weeklyPercentSuffix">remaining</span></p>
-            </section>
-
-            <section class="panel">
-              <h2>Freshness</h2>
+            <section class="panel secondary-panel">
+              <h2>freshness</h2>
               <p><strong id="burnRate">Last observed:</strong> <span id="burnRateSuffix">--</span></p>
               <p><strong id="hoursLeft">Status:</strong> <span id="hoursLeftSuffix">waiting</span></p>
+              <p><strong id="quotaResetLabel">--</strong> 5h reset time</p>
             </section>
           </div>
 
           <section class="timeline" aria-labelledby="timelineTitle">
             <div class="timeline-head">
               <div>
-                <h2 id="timelineTitle">Quota Timeline</h2>
-                <p class="section-subtitle">from local snapshots every 5m</p>
+                <h2 id="timelineTitle">Local history</h2>
+                <p class="section-subtitle">saved from Codex local file every 5m</p>
               </div>
-              <p class="timeline-meta" id="snapshotMeta">waiting for snapshots</p>
+              <p class="timeline-meta" id="snapshotMeta">waiting for history</p>
             </div>
-            <div class="timeline-chart" aria-label="Local quota snapshot timeline">
+            <div class="timeline-chart" aria-label="Local quota history timeline">
               <div class="snapshot-bars" id="snapshotBars"></div>
               <div class="snapshot-axis" id="snapshotAxis" aria-hidden="true"></div>
             </div>
-            <p class="timeline-empty" id="snapshotEmpty" hidden>No local snapshots yet. Keep TokensFlow running and this timeline will fill itself.</p>
+            <p class="timeline-empty" id="snapshotEmpty" hidden>No local history yet. Keep TokensFlow running and this timeline will fill itself.</p>
             <div class="timeline-legend">
               <span><i class="legend-dot quota-dot"></i>5h quota <strong id="snapshotQuotaLatest">--</strong></span>
               <span><i class="legend-dot weekly-dot"></i>weekly quota <strong id="snapshotWeeklyLatest">--</strong></span>

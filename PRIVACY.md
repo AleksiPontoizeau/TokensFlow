@@ -5,13 +5,13 @@ TokensFlow is local-only by design.
 ## Network
 
 TokensFlow starts a server bound to `127.0.0.1`. It does not send usage data,
-session logs, prompts, quotas, snapshots, or debug metadata to TokensFlow,
+session logs, prompts, quotas, local history, or debug metadata to TokensFlow,
 OpenAI, or any third-party service.
 
 The browser polls local endpoints:
 
 - `GET /api/usage`
-- `GET /api/snapshots`
+- `GET /api/history`
 
 ## Files Read
 
@@ -25,15 +25,12 @@ For JSON fallback mode, TokensFlow reads:
 
 - the packaged `data/usage.json`
 
-For Claude Code and Cursor placeholder modes, TokensFlow only reads a JSON file
-when you explicitly provide one with:
-
-- `TOKENSFLOW_CLAUDE_USAGE_FILE`
-- `TOKENSFLOW_CURSOR_USAGE_FILE`
+JSON fallback mode is available for local development fixtures, but the shipped
+CLI launches Codex mode by default.
 
 ## Files Written
 
-When snapshot recording is enabled, TokensFlow writes local JSONL snapshots to:
+When local history recording is enabled, TokensFlow writes JSONL history points to:
 
 ```text
 ~/.tokensflow/snapshots.jsonl
@@ -42,12 +39,15 @@ When snapshot recording is enabled, TokensFlow writes local JSONL snapshots to:
 You can change or disable this with:
 
 ```bash
-TOKENSFLOW_SNAPSHOTS=0
-TOKENSFLOW_SNAPSHOT_FILE=/path/to/snapshots.jsonl
+TOKENSFLOW_HISTORY=0
+TOKENSFLOW_HISTORY_FILE=/path/to/snapshots.jsonl
 ```
 
-The browser cannot choose an arbitrary snapshot file path. `/api/snapshots`
-always reads the server-configured snapshot file.
+The older `TOKENSFLOW_SNAPSHOT_*` names and `/api/snapshots` endpoint still work
+as compatibility aliases.
+
+The browser cannot choose an arbitrary history file path. The history endpoints
+always read the server-configured history file.
 
 ## Telemetry
 

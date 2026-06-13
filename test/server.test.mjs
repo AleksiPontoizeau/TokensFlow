@@ -6,8 +6,8 @@ import os from "node:os";
 import path from "node:path";
 import { createTokensFlowServer, listenOnAvailablePort } from "../server.mjs";
 
-describe("server snapshots API", () => {
-  it("returns an empty state for a missing local snapshot file", async () => {
+describe("server local history API", () => {
+  it("returns an empty state for a missing local history file", async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "tokensflow-server-snapshots-"));
     const server = createTokensFlowServer({
       runtimeConfig: runtimeConfig(path.join(root, "missing.jsonl"))
@@ -15,7 +15,7 @@ describe("server snapshots API", () => {
     const url = await listen(server);
 
     try {
-      const response = await fetch(`${url}/api/snapshots`);
+      const response = await fetch(`${url}/api/history`);
       const body = await response.json();
 
       assert.equal(response.status, 200);
@@ -27,7 +27,28 @@ describe("server snapshots API", () => {
     }
   });
 
-  it("does not read arbitrary snapshot paths from HTTP query params", async () => {
+  it("keeps /api/snapshots as a compatibility alias", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "tokensflow-server-history-alias-"));
+    const configuredFile = path.join(root, "configured.jsonl");
+    const savedAt = new Date().toISOString();
+    await fs.writeFile(configuredFile, `${JSON.stringify(snapshot(savedAt, 77))}\n`);
+    const server = createTokensFlowServer({
+      runtimeConfig: runtimeConfig(configuredFile)
+    });
+    const url = await listen(server);
+
+    try {
+      const response = await fetch(`${url}/api/snapshots`);
+      const body = await response.json();
+
+      assert.equal(response.status, 200);
+      assert.equal(body.summary.quotaLatest, 77);
+    } finally {
+      await close(server);
+    }
+  });
+
+  it("does not read arbitrary history paths from HTTP query params", async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "tokensflow-server-fixed-path-"));
     const configuredFile = path.join(root, "configured.jsonl");
     const otherFile = path.join(root, "other.jsonl");
@@ -40,7 +61,7 @@ describe("server snapshots API", () => {
     const url = await listen(server);
 
     try {
-      const response = await fetch(`${url}/api/snapshots?file=${encodeURIComponent(otherFile)}`);
+      const response = await fetch(`${url}/api/history?file=${encodeURIComponent(otherFile)}`);
       const body = await response.json();
 
       assert.equal(response.status, 200);

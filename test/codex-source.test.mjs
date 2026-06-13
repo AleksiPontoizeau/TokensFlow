@@ -34,8 +34,30 @@ describe("buildCodexActivity24h", () => {
     assert.equal(activity.parsedEvents, 2);
     assert.equal(activity.parsedSessions, 2);
     assert.equal(activity.activityMetric, "parsed tokens");
+    assert.equal(Number(activity.todayCostUsd.toFixed(5)), 0.01188);
+    assert.equal(Number(activity.last24hCostUsd.toFixed(5)), 0.01188);
     assert.ok(three?.usedTokens > 0);
     assert.ok(fifteen?.usedTokens > 0);
+  });
+
+  it("estimates cost from total tokens when input/output split is unavailable", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "tokensflow-codex-cost-fallback-"));
+    const sessionDir = path.join(root, "2026", "06", "07");
+    await fs.mkdir(sessionDir, { recursive: true });
+
+    await fs.writeFile(
+      path.join(sessionDir, "rollout-total-only.jsonl"),
+      `${JSON.stringify(totalOnlyTokenCountEvent("2026-06-07T10:00:00.000Z", 1000))}\n`
+    );
+
+    const activity = await buildCodexActivity24h(root, {
+      now: new Date("2026-06-07T14:00:00.000Z"),
+      timezone: "Europe/Paris"
+    });
+
+    assert.equal(activity.parsedEvents, 1);
+    assert.equal(Number(activity.todayCostUsd.toFixed(4)), 0.0042);
+    assert.equal(Number(activity.last24hCostUsd.toFixed(4)), 0.0042);
   });
 });
 
@@ -54,16 +76,19 @@ describe("readCodexUsage", () => {
       cwd: "/tmp/no-codex-thread-here",
       stateDb: path.join(root, "missing-state.sqlite"),
       goalsDb: path.join(root, "missing-goals.sqlite"),
-      sessionsRoot: root
+      sessionsRoot: root,
+      now: new Date("2026-06-07T14:00:00.000Z")
     });
 
     assert.equal(usage.quotaMode, "codex-rate-limit");
-    assert.equal(usage.source, "codex-rate-limits · plus");
+    assert.equal(usage.source, "codex local file · plus");
     assert.equal(usage.quotaUsedPercent, 70);
     assert.equal(usage.quotaRemainingPercent, 30);
     assert.equal(usage.weeklyUsedPercent, 35);
     assert.equal(usage.weeklyRemainingPercent, 65);
     assert.equal(usage.localTotalTokens, 123456);
+    assert.equal(Number(usage.todayCostUsd.toFixed(5)), 0.65184);
+    assert.equal(Number(usage.last24hCostUsd.toFixed(5)), 0.65184);
     assert.match(usage.debug.latestRateLimitFile, /rollout-rate-limit\.jsonl$/);
   });
 });
@@ -99,6 +124,22 @@ function tokenCountEvent(timestamp, totalTokens) {
         last_token_usage: {
           input_tokens: Math.round(totalTokens * 0.7),
           output_tokens: Math.round(totalTokens * 0.3),
+          total_tokens: totalTokens
+        }
+      },
+      rate_limits: null
+    }
+  };
+}
+
+function totalOnlyTokenCountEvent(timestamp, totalTokens) {
+  return {
+    timestamp,
+    type: "event_msg",
+    payload: {
+      type: "token_count",
+      info: {
+        last_token_usage: {
           total_tokens: totalTokens
         }
       },

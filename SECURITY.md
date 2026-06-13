@@ -21,20 +21,20 @@ server binds to `127.0.0.1`, not `0.0.0.0`.
 The browser-facing API must not accept arbitrary filesystem paths. In particular:
 
 - `/api/usage` reads from configured local sources only
-- `/api/snapshots` reads from the configured snapshot file only
-- query parameters must not override snapshot or Codex log paths
+- `/api/history` reads from the configured local history file only
+- `/api/snapshots` is a compatibility alias for `/api/history`
+- query parameters must not override history or Codex log paths
 
 ## Local Data Risk
 
 Codex session logs can contain sensitive development context. TokensFlow parses
-only the local files needed to derive quota snapshots and activity metadata, but
+only the local files needed to derive quota, cost, and activity metadata, but
 users should still treat `~/.codex` as private data.
 
 ## Dependency Risk
 
-TokensFlow currently has no runtime npm dependencies. Keep it that way unless a
-dependency provides clear user value that cannot reasonably be implemented with
-the platform.
+TokensFlow keeps runtime dependencies minimal. The tray mode uses `systray2`;
+add more dependencies only when they provide clear local utility value.
 
 ## Publishing Checklist
 
@@ -46,5 +46,5 @@ npm run check
 npm pack --dry-run
 ```
 
-Review the tarball contents and confirm that no local logs, snapshots, secrets,
+Review the tarball contents and confirm that no local logs, history files, secrets,
 or machine-specific files are included.

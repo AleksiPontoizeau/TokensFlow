@@ -53,7 +53,7 @@ describe("readSnapshotHistory", () => {
 function snapshot(savedAt, quotaRemainingPercent, weeklyRemainingPercent) {
   return {
     savedAt,
-    source: "codex-rate-limits · plus",
+    source: "codex local file · plus",
     quotaMode: "codex-rate-limit",
     sourceObservedAt: savedAt,
     quotaRemainingPercent,
